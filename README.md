@@ -34,4 +34,4 @@ Simply download script and run it.
 - [ ] Linux: Ethernet
 - [ ] Linux: Wi-Fi
 - [ ] macOS: Ethernet
-- [ ] macOS: Wi-Fi
+- [x] macOS: Wi-Fi

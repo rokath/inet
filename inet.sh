@@ -110,6 +110,7 @@ ensure_unix_privileges() {
   fi
 
   command_exists sudo || die "please run as root or install sudo."
+  sudo -v || die "failed to acquire sudo privileges."
 }
 
 # Execute a command with elevated privileges on Unix-like systems.
@@ -117,7 +118,7 @@ run_unix_privileged() {
   if [ "${EUID:-$(id -u)}" -eq 0 ]; then
     "$@"
   else
-    sudo "$@"
+    sudo -n "$@" || die "sudo session expired while applying network changes."
   fi
 }
 
@@ -303,10 +304,10 @@ ping_once() {
       ping -n 1 -w 1500 "$target" >/dev/null 2>&1
       ;;
     linux)
-      ping -c 1 -W 2 "$target" >/dev/null 2>&1
+      ping -n -c 1 -W 2 "$target" >/dev/null 2>&1
       ;;
     macos)
-      ping -c 1 "$target" >/dev/null 2>&1
+      ping -n -q -c 1 -t 2 -W 1500 "$target" >/dev/null 2>&1
       ;;
     *)
       return 1
@@ -370,17 +371,24 @@ verify_connectivity() {
   return 1
 }
 
-# Show the lightweight status view used when the script is called without
-# arguments and also after the final action report has been printed.
-print_usage_status() {
+# Print the current reachability state without command usage text.
+print_current_status() {
   local os="$1"
 
-  say "Usage: $SCRIPT_NAME off|on"
   if has_internet "$os"; then
     say "Status: Internet is reachable by ping."
   else
     say "Status: Internet is not reachable by ping."
   fi
+}
+
+# Show the lightweight status view used when the script is called without
+# arguments.
+print_usage_status() {
+  local os="$1"
+
+  say "Usage: $SCRIPT_NAME off|on"
+  print_current_status "$os"
 }
 
 # Render the final human-readable status report from the machine-readable
@@ -474,7 +482,7 @@ main() {
   final_output="$(
     {
       print_status_message "$action" "$result"
-      print_usage_status "$os"
+      print_current_status "$os"
     }
   )"
   printf '%s\n' "$final_output"
